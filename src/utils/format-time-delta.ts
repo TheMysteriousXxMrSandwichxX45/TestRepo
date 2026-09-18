@@ -10,10 +10,10 @@
  * parseDateAsUTC("2025-12-01T11:53:37+00:00"); // Already has timezone, parsed correctly
  */
 const parseDateAsUTC = (dateString: string): Date => {
-  // Check if the string already has a timezone indicator
-  // Look for 'Z' (UTC), '+' (positive offset), or '-' after the time part (negative offset)
-  const hasTimezone =
-    dateString.includes("Z") || dateString.match(/[+-]\d{2}:\d{2}$/) !== null;
+  // ISO 8601 permits UTC markers and offsets with or without a colon.
+  // Anchor the check so characters elsewhere in the timestamp are not
+  // mistaken for timezone information.
+  const hasTimezone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(dateString);
 
   if (hasTimezone) {
     // Already has timezone info, parse normally
@@ -39,7 +39,9 @@ export const formatTimeDelta = (date: Date | string) => {
   // Parse string dates as UTC if needed, or use Date object directly
   const dateObj = typeof date === "string" ? parseDateAsUTC(date) : date;
   const now = new Date();
-  const delta = now.getTime() - dateObj.getTime();
+  // Backend and browser clocks can differ slightly. Treat future timestamps
+  // as current instead of rendering confusing negative values such as `-3s`.
+  const delta = Math.max(0, now.getTime() - dateObj.getTime());
 
   const seconds = Math.floor(delta / 1000);
   const minutes = Math.floor(seconds / 60);
